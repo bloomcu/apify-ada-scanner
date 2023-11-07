@@ -1,0 +1,15 @@
+{
+    "title": "Input schema for Block Screenshotter",
+    "description": "Enter the start URL(s) of the blocks to screenshot and run the Actor.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "startUrls": {
+            "title": "Start URLs",
+            "type": "array",
+            "description": "One or more URLs",
+            "editor": "requestListSources",
+            "prefill": [{ "url": "https://crawlee.dev" }]
+        }
+    }
+}
