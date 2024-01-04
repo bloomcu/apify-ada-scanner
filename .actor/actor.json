@@ -1,6 +1,6 @@
 {
 	"actorSpecification": 1,
-	"name": "block-screenshotter",
+	"name": "apify-ada-scanner",
 	"version": "0.0",
 	"buildTag": "latest",
 	"environmentVariables": {}

@@ -1,8 +1,23 @@
-# Crawlee + PuppeteerCrawler + JavaScript project
+# Apify ADA Scanner
+Use [Puppeteer with Crawlee](https://crawlee.dev/api/puppeteer-crawler/class/PuppeteerCrawler) and [FAE](https://github.com/opena11y/evaluation-library) to run ADA scans on Apify platform.
 
-This template is a production ready boilerplate for developing with `PuppeteerCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+## How to use
+Install Apify CLI
+```
+npm install -g apify-cli@latest 
+```
 
-If you're looking for examples or want to learn more visit:
+Run crawl
+```
+apify run or npm run start
+```
 
-- [Documentation](https://crawlee.dev/api/puppeteer-crawler/class/PuppeteerCrawler)
-- [Examples](https://crawlee.dev/docs/examples/puppeteer-crawler)
+Login to Apify
+```
+apify login
+```
+
+Deploy to Apify
+```
+apify push
+```

@@ -1,6 +1,6 @@
 {
-    "title": "Input schema for Block Screenshotter",
-    "description": "Enter the start URL(s) of the blocks to screenshot and run the Actor.",
+    "title": "Input schema for Apify ADA Scanner",
+    "description": "Enter the start URL(s) website you want to scan.",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
