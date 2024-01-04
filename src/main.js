@@ -24,13 +24,13 @@ const crawler = new PuppeteerCrawler({
       log.info(`Found '${JSON.parse(results).rule_results.length}' violations`);
 
       // Enqueue discovered links
-      // await enqueueLinks();
+      await enqueueLinks();
   },
 
   maxRequestsPerCrawl: 200,
 });
 
-// await crawler.run(input.startUrls);
-await crawler.run(['https://vetframe.com']);
+await crawler.run(input.startUrls);
+// await crawler.run(['https://vetframe.com']);
 
 await Actor.exit();
