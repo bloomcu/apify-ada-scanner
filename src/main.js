@@ -16,6 +16,7 @@ const crawler = new PuppeteerCrawler({
       // Store the results
       await Dataset.pushData({
           title: title,
+          url: request.loadedUrl,
           results: results,
       })
 
