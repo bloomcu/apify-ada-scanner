@@ -28,7 +28,7 @@ const crawler = new PuppeteerCrawler({
       await enqueueLinks();
   },
 
-  maxRequestsPerCrawl: 200,
+  maxRequestsPerCrawl: 3,
 });
 
 await crawler.run(input.startUrls);
