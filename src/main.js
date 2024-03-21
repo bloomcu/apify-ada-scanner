@@ -29,7 +29,7 @@ const crawler = new PuppeteerCrawler({
       await enqueueLinks();
   },
 
-  maxRequestsPerCrawl: 30,
+  maxRequestsPerCrawl: 300,
 });
 
 // Optionally use a residential proxy
