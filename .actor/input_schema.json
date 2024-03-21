@@ -10,6 +10,12 @@
             "description": "One or more URLs",
             "editor": "requestListSources",
             "prefill": [{ "url": "https://crawlee.dev" }]
+        },
+        "useResidentialProxy": {
+            "title": "Use residential proxy",
+            "type": "boolean",
+            "description": "Use residential proxy to avoid getting blocked by the target website",
+            "default": false
         }
     }
 }
