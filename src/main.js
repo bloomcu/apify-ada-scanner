@@ -2,6 +2,14 @@ import { Actor } from 'apify';
 import { PuppeteerCrawler, Dataset } from 'crawlee';
 
 await Actor.init();
+
+// Optionally use a residential proxy
+if (input.useResidentialProxy) {
+  const proxyConfiguration = await Actor.createProxyConfiguration({
+    groups: ['RESIDENTIAL'],
+  });
+}
+
 const input = await Actor.getInput(); // The parameters you passed to the actor
 
 const crawler = new PuppeteerCrawler({
