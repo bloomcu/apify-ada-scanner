@@ -16,6 +16,12 @@
             "type": "boolean",
             "description": "Use residential proxy to avoid getting blocked by the target website",
             "default": false
+        },
+        "shouldEnqueueLinks": {
+            "title": "Should Enqueue Links",
+            "type": "boolean",
+            "description": "If true, the crawler will enqueue additional links discovered on the page. If false, it will scan only the provided start URLs.",
+            "default": true
         }
     }
 }

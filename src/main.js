@@ -5,6 +5,9 @@ await Actor.init();
 
 const input = await Actor.getInput(); // The parameters you passed to the actor
 
+// This assumes `input` has a boolean property called `shouldEnqueueLinks` (e.g., true or false)
+const shouldEnqueueLinks = input.shouldEnqueueLinks ?? true;  // Defaults to true if not provided
+
 const crawler = new PuppeteerCrawler({
 
   async requestHandler({ request, page, enqueueLinks, log }) {
@@ -26,7 +29,12 @@ const crawler = new PuppeteerCrawler({
       log.info(`Found '${JSON.parse(results).rule_results.length}' violations`);
 
       // Enqueue discovered links
-      await enqueueLinks();
+      // await enqueueLinks();
+      if (shouldEnqueueLinks) {
+        await enqueueLinks();
+      } else {
+          log.info(`Skipping link enqueuing for '${title}' at url: ${request.loadedUrl}`);
+      }
   },
 
   maxRequestsPerCrawl: 300,
