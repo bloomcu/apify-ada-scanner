@@ -6,6 +6,9 @@ node_modules
 apify_storage
 crawlee_storage
 storage
+data_backup/*
+debug_helper.php
+.DS_Store
 
 # Added by Apify CLI
 .venv
