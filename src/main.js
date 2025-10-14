@@ -1,15 +1,18 @@
+// main.js
 import { Actor } from 'apify';
 import { PuppeteerCrawler, Dataset } from 'crawlee';
 
 await Actor.init();
 
-const input = await Actor.getInput(); // The parameters you passed to the actor
+const input = await Actor.getInput() || {};
+const shouldEnqueueLinks = input.shouldEnqueueLinks ?? true; // default true
 
-// This assumes `input` has a boolean property called `shouldEnqueueLinks` (e.g., true or false)
-const shouldEnqueueLinks = input.shouldEnqueueLinks ?? true;  // Defaults to true if not provided
+/**
+ * ---- Normalizers: new → old shape ----
+ * Keeps your convenient helpers and uses them just before Dataset.pushData().
+ */
 function normalizeRuleResultsToOldShape(ruleResults) {
-  
-  return (ruleResults || []).map(rr => {
+  return (ruleResults || []).map((rr) => {
     const out = { ...rr };
 
     // Counters: results_* -> elements_*
@@ -25,27 +28,22 @@ function normalizeRuleResultsToOldShape(ruleResults) {
       out.element_results = rr.results;
     }
 
-    // Optional: drop the new names if you need an exact old-only schema
-    // delete out.results_passed; delete out.results_violation; delete out.results_warning;
-    // delete out.results_failure; delete out.results_manual_check; delete out.results_hidden;
-    // delete out.results;
-
-    // Optional: fields missing in new — set to null to match old presence
-    if (!('guideline_code' in out))   out.guideline_code = null;
-    if (!('rule_group_code' in out))  out.rule_group_code = null;
+    // Old schema keys that may not exist in the new payload
+    if (!('guideline_code' in out))      out.guideline_code = null;
+    if (!('rule_group_code' in out))     out.rule_group_code = null;
     if (!('rule_group_code_nls' in out)) out.rule_group_code_nls = null;
 
     return out;
   });
 }
 
-
-function normalizeContainerToOldShape(input, { DROP_NEW_KEYS = false, STRINGIFY = false } = {}) {
-  // Accept either the whole dataset item or the inner "results" payload, as string or object.
-  let payload = input;
+function normalizeContainerToOldShape(inputPayload, { DROP_NEW_KEYS = false } = {}) {
+  // Accept either the whole dataset item or the inner "results" payload, as string or object
+  let payload = inputPayload;
   if (typeof payload === 'string') {
     try { payload = JSON.parse(payload); } catch { payload = {}; }
   }
+
   // Some writers wrap under .results (string or object)
   let res = payload?.results ?? payload;
   if (typeof res === 'string') {
@@ -55,114 +53,170 @@ function normalizeContainerToOldShape(input, { DROP_NEW_KEYS = false, STRINGIFY 
 
   // Map top-level meta from new -> old
   const out = { ...res };
-  out.ruleset_id      = out.ruleset_id      ?? out.ruleset      ?? null;   // NEW ruleset -> OLD ruleset_id
-  out.ruleset_version = out.ruleset_version ?? out.version      ?? null;   // NEW version  -> OLD ruleset_version
-  out.ruleset_title   = out.ruleset_title   ?? null;                        // old had it; keep null if unknown
-  out.ruleset_abbrev  = out.ruleset_abbrev  ?? null;                        // old had it; keep null if unknown
-  out.markup_information = out.markup_information ?? {};                    // ensure object
+  out.ruleset_id      = out.ruleset_id      ?? out.ruleset      ?? null; // NEW ruleset -> OLD ruleset_id
+  out.ruleset_version = out.ruleset_version ?? out.version      ?? null; // NEW version  -> OLD ruleset_version
+  out.ruleset_title   = out.ruleset_title   ?? null;                      // keep for parity
+  out.ruleset_abbrev  = out.ruleset_abbrev  ?? null;                      // keep for parity
+  out.markup_information = out.markup_information ?? {};
 
   // Normalize the per-rule array
   const arr = Array.isArray(out.rule_results)
     ? out.rule_results
     : (Array.isArray(out.allRuleResults) ? out.allRuleResults : []);
-  out.rule_results = normalizeRuleResultsToOldShape(arr, { DROP_NEW_KEYS });
+  out.rule_results = normalizeRuleResultsToOldShape(arr);
 
-  // Optionally drop the new top-level keys
+  // Optionally drop new-only meta
   if (DROP_NEW_KEYS) {
-    delete out.ruleset;      // new name
-    delete out.version;      // new name
-    delete out.scope_filter; // new-only meta
-    delete out.date;         // new-only meta
+    delete out.ruleset;
+    delete out.version;
+    delete out.scope_filter;
+    delete out.date;
     delete out.allRuleResults;
   }
 
-  // Return in the same style your consumers expect
-  // If your old files stored `results` as a JSON string, turn it back into that.
-  if (STRINGIFY) {
-    return JSON.stringify(out);
-  }
   return out;
 }
+
+function normalizeForLegacyBackend(obj, {
+  wrapLikeOld = false,           // set true if your backend expects {title,url,results:"..."}
+  forcePlainEvalUrlEncoded = false,  // set true if legacy used unencoded URL here
+  synthesizePageOrdinal = 2,     // old exports sometimes used 2 for page-level MC
+} = {}) {
+  const out = { ...obj };
+
+  // 1) eval_url_encoded parity (some old exports used plain URL here)
+  if (forcePlainEvalUrlEncoded) {
+    out.eval_url_encoded = String(out.eval_url || '');
+  }
+
+  // 2) Ensure page-level element hits have stable identifiers/ordinals
+  for (const r of out.rule_results || []) {
+    for (const e of r.element_results || []) {
+      if ((e.element_identifier === 'element' || !e.element_identifier) && (e.ordinal_position == null)) {
+        // treat as page-level when position is missing and not a website result
+        e.element_identifier = e.element_identifier === 'website' ? 'website' : 'page';
+        e.ordinal_position = synthesizePageOrdinal;
+      }
+    }
+  }
+
+  // 3) Optionally wrap like the old container (results as a string)
+  if (wrapLikeOld) {
+    return {
+      title: out.eval_title || '',
+      url: out.eval_url || '',
+      results: JSON.stringify(out),
+    };
+  }
+
+  return out;
+}
+
+/**
+ * ---- Crawler ----
+ * Assumes you’ve bundled the exporter as: ./vendor/openA11yLegacyExport.bundle.iife.js
+ * (i.e., it defines window.OpenA11yLegacyExport.run({...}))
+ */
 const crawler = new PuppeteerCrawler({
+  maxRequestsPerCrawl: input.maxRequestsPerCrawl ?? 300,
 
   async requestHandler({ request, page, enqueueLinks, log }) {
-    const title = await page.title();
-    // polyfil url parse
-  
-    // Inject and execute FAE
-    await page.addScriptTag({path: './vendor/openA11y.bundle.iife.js'});
-    // Wait for the API to be ready
-    // Wait for API
+    // Keep some quick console mirroring for debugging
+    page.on('console', async (msg) => {
+      try {
+        const vals = await Promise.all(msg.args().map((a) => a.jsonValue()));
+        console.log('PAGE:', msg.type().toUpperCase(), msg.text(), ...vals);
+      } catch {
+        console.log('PAGE:', msg.type().toUpperCase(), msg.text());
+      }
+    });
+
+    // Ensure the document is settled
+    await page.waitForLoadState?.('load').catch(() => {});
+    const title = await page.title().catch(() => '');
+
+    // Inject the legacy exporter (IIFE bundle)
+    await page.addScriptTag({ path: './vendor/openA11yLegacyExport.bundle.iife.js' });
+
+    // Wait for the API to exist
     await page.waitForFunction(
-      () => window.openA11yForPuppeteer && typeof window.openA11yForPuppeteer.evaluate === 'function',
-      { timeout: 10000 }
+      () => window.OpenA11yLegacyExport && typeof window.OpenA11yLegacyExport.run === 'function',
+      { timeout: 15000 }
     );
 
-    // Evaluate (same signature as your bookmarklet example)
-    // 1) run in the page, serialize safely to a JSON string
-    const resultsJson = await page.evaluate(() => {
+    // Evaluate in page: run exporter, stringify safely, return the string
+    const resultsString = await page.evaluate(async () => {
       const safeStringify = (obj) => {
         const seen = new WeakSet();
         return JSON.stringify(
           obj,
           (k, v) => {
-            if (typeof v === 'function') return undefined; // drop functions
-            if (v && typeof v === 'object') { if (seen.has(v)) return; seen.add(v); }
+            if (typeof v === 'function') return undefined;
+            if (v && typeof v === 'object') {
+              if (seen.has(v)) return;
+              seen.add(v);
+            }
             return v;
           },
           2
         );
       };
 
-      const r = (window.openA11yForPuppeteer || window.openA11y)
-        .evaluate('WCAG21', 'AA', 'ALL', []);
-
-        return safeStringify(r);
+      // Use the object signature for run()
+      const payload = await window.OpenA11yLegacyExport.run({
+        ruleset: 'WCAG22',
+        level: 'AA',
+        scope: 'ALL',
       });
 
-      // 2) back on Node side: parse and use it
-      let results = JSON.parse(JSON.parse(resultsJson));
-      // console.log('results keys:', Object.keys(results || {}));
-      results = normalizeContainerToOldShape(results);
-      results['rule_results'] = normalizeRuleResultsToOldShape(results['rule_results']);
-      // console.log('results', results);
-      // Store the results
-      await Dataset.pushData({
-          title: title,
-          url: request.loadedUrl,
-          results: JSON.stringify(results),
-      })
+      return safeStringify(payload);
+    });
 
-      // Log anything that might be useful to see during crawling job.
-      log.info(`Checking '${title}' at url: ${request.loadedUrl}`);
-      const count =
-        results?.rule_results?.length ??
-        results?.allRuleResults?.length ??
-        0;
+    // Back in Node: parse and normalize to old shape
+    let legacy = {};
+    try {
+      legacy = JSON.parse(resultsString);
+    } catch (e) {
+      log.exception(e, 'Failed to parse exporter JSON string');
+      legacy = {};
+    }
 
-      log.info(`Checking '${title}' at url: ${request.loadedUrl}`);
-      log.info(`Found '${count}' violations`);
+    // Force in our current URL/title in case page altered them
+    legacy.eval_url = request.loadedUrl || legacy.eval_url || request.url;
+    legacy.eval_title = title || legacy.eval_title || '';
 
-      // Enqueue discovered links
-      // await enqueueLinks();
-      if (shouldEnqueueLinks) {
-        await enqueueLinks();
-      } else {
-          log.info(`Skipping link enqueuing for '${title}' at url: ${request.loadedUrl}`);
-      }
+    // Normalize to the exact old top-level structure your consumers expect
+    legacy = normalizeContainerToOldShape(legacy, { DROP_NEW_KEYS: true });
+
+    // Helpful counters for logs
+    const countRules = Array.isArray(legacy.rule_results) ? legacy.rule_results.length : 0;
+    const totalViolations = legacy.rule_results?.reduce((sum, r) => sum + (r.elements_violation || 0), 0) ?? 0;
+
+    log.info(`Checked '${legacy.eval_title}' — rules: ${countRules}, violations: ${totalViolations}`);
+    legacy = normalizeForLegacyBackend(legacy, {
+      wrapLikeOld: true,              // set true only if your backend insists on the old wrapper
+      forcePlainEvalUrlEncoded: false, // set true if diffs show a mismatch here
+    });
+    await Dataset.pushData(legacy);
+    // WRITE: push the full legacy-shaped object as a dataset item
+    // await Dataset.pushData(legacy);
+
+    // Optionally, also store the raw string (uncomment if you need both)
+    // await Actor.setValue(`legacy-${Date.now()}.json`, resultsString, { contentType: 'application/json; charset=utf-8' });
+
+    if (shouldEnqueueLinks) {
+      await enqueueLinks();
+    } else {
+      log.info(`Skipping link enqueuing for '${legacy.eval_title}'`);
+    }
   },
-
-  maxRequestsPerCrawl: 300,
 });
 
-// Optionally use a residential proxy
+// Optional: residential proxy setup
 if (input.useResidentialProxy) {
-  const proxyConfiguration = await Actor.createProxyConfiguration({
-    groups: ['RESIDENTIAL'],
-  });
+  await Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] });
 }
 
+// Run the crawl
 await crawler.run(input.startUrls);
-// await crawler.run(['https://vetframe.com']);
-
 await Actor.exit();
