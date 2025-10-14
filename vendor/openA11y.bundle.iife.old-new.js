@@ -40201,97 +40201,56 @@
 
   }
 
-  // IMPORTANT: use explicit .js extension so Rollup resolves it
-  // --- URL.parse shim (browser-safe) ---
-  // Include this BEFORE you expose window.openA11y
+  /* opena11y-for-puppeteer.js */
+
+  // 1) Tiny browser-safe shim for Node-style URL.parse (no lib edits needed)
   (function () {
-    // only in real browsers
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
-    // add URL.parse if missing
-    if (typeof window.URL === 'function' && typeof window.URL.parse !== 'function') {
-      window.URL.parse = function (input, parseQueryString = false /*, slashesDenoteHost (ignored) */) {
-        try {
-          const u = new window.URL(input, document.baseURI);
-
-          const out = {
-            href: u.href,
-            protocol: u.protocol,                         // "https:"
-            slashes: /^https?:|^file:|^ws:|^wss:/i.test(u.protocol),
-            auth: null,                                   // not exposed by browser URL
-            host: u.host,                                 // "example.com:8080"
-            port: u.port || null,
-            hostname: u.hostname,
-            hash: u.hash || null,                         // "#frag"
-            search: u.search || null,                     // "?a=1&b=2"
-            query: u.search ? u.search.slice(1) : null,   // "a=1&b=2" or object if parseQueryString=true
-            pathname: u.pathname,                         // "/path"
-            path: u.pathname + (u.search || ''),          // "/path?a=1"
-          };
-
-          if (parseQueryString && out.query) {
-            const params = {};
-            out.query.split('&').forEach(pair => {
-              if (!pair) return;
-              const [k, v = ''] = pair.split('=');
-              const key = decodeURIComponent(k.replace(/\+/g, '%20'));
-              const val = decodeURIComponent(v.replace(/\+/g, '%20'));
-              if (Object.prototype.hasOwnProperty.call(params, key)) {
-                const cur = params[key];
-                params[key] = Array.isArray(cur) ? cur.concat(val) : [cur, val];
-              } else {
-                params[key] = val;
-              }
-            });
-            out.query = params;
-          }
-
-          return out;
-        } catch {
-          return null;
-        }
-      };
-    }
-
-    // ultra-light legacy shim for code doing require('url').parse(...)
-    if (typeof window.require !== 'function') {
-      window.require = function (mod) {
-        if (mod === 'url' && typeof window.URL?.parse === 'function') {
-          return { parse: window.URL.parse };
-        }
-        throw new Error('Module not found: ' + mod);
-      };
-    }
+    try {
+      if (typeof URL.parse !== 'function') {
+        URL.parse = function (u) {
+          try { return new window.URL(u, document.baseURI); }
+          catch { return null; }
+        };
+      }
+    } catch {}
   })();
-  (function () {
-    // Expose a stable global that Puppeteer can call
-    window.openA11yForPuppeteer = {
-      evaluate(ruleset = 'WCAG21', level = 'AA', ruleList = []) {
-        const doc = window.document;
-        const lib = new EvaluationLibrary();
-        let er;
-        switch (ruleset) {
-          case 'WCAG20':
-          case 'WCAG21':
-          case 'WCAG22':
-              
-              //by returning this call, we should be able to access and iterate through rules to build a more useful array
-              // TODO, what is the diff between first step rules, etc;
-              // pass a real value for scopeFilter if you need it
-              er = lib.evaluateWCAG(doc, doc.title, doc.location.href, ruleset, level, undefined);
+  // optional: import DebugLogging if you want it
+  // import DebugLogging from '../debug.js';
 
-              return er;
+  // 3) Expose a stable API (do NOT auto-run)
+  window.openA11yForPuppeteer = {
+    evaluate(ruleset = 'WCAG22', level = 'AA', scopeFilter = 'ALL', ruleList = []) {
+      const doc = window.document;
+      const evaluationLibrary = new EvaluationLibrary();
+      let evaluationResult;
 
-            
-          case 'LIST':
-            return lib.evaluateRuleList(doc, doc.title, doc.location.href, ruleList);
-          case 'FIRSTSTEP':
-            return lib.evaluateFirstStepRules(doc, doc.title, doc.location.href);
-          default:
-            return { error: 'Unknown ruleset' };
-        }
-      },
-    };
-  })();
+      switch (ruleset) {
+        case 'WCAG20':
+        case 'WCAG21':
+        case 'WCAG22':
+          evaluationResult = evaluationLibrary.evaluateWCAG(
+            doc, doc.title, doc.location.href, ruleset, level, scopeFilter
+          );
+          break;
+
+        case 'LIST':
+          evaluationResult = evaluationLibrary.evaluateRuleList(
+            doc, doc.title, doc.location.href, ruleList
+          );
+          break;
+
+        case 'FIRSTSTEP':
+          evaluationResult = evaluationLibrary.evaluateFirstStepRules(
+            doc, doc.title, doc.location.href
+          );
+          break;
+
+        default:
+          evaluationResult = { error: 'Unknown ruleset' };
+      }
+
+      return evaluationResult;
+    },
+  };
 
 })();
