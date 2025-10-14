@@ -164,7 +164,7 @@ const crawler = new PuppeteerCrawler({
 
       // Use the object signature for run()
       const payload = await window.OpenA11yLegacyExport.run({
-        ruleset: 'WCAG22',
+        ruleset: 'WCAG21',
         level: 'AA',
         scope: 'ALL',
       });
