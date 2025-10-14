@@ -77,6 +77,41 @@ function normalizeContainerToOldShape(inputPayload, { DROP_NEW_KEYS = false } = 
   return out;
 }
 
+function normalizeForLegacyBackend(obj, {
+  wrapLikeOld = false,           // set true if your backend expects {title,url,results:"..."}
+  forcePlainEvalUrlEncoded = false,  // set true if legacy used unencoded URL here
+  synthesizePageOrdinal = 2,     // old exports sometimes used 2 for page-level MC
+} = {}) {
+  const out = { ...obj };
+
+  // 1) eval_url_encoded parity (some old exports used plain URL here)
+  if (forcePlainEvalUrlEncoded) {
+    out.eval_url_encoded = String(out.eval_url || '');
+  }
+
+  // 2) Ensure page-level element hits have stable identifiers/ordinals
+  for (const r of out.rule_results || []) {
+    for (const e of r.element_results || []) {
+      if ((e.element_identifier === 'element' || !e.element_identifier) && (e.ordinal_position == null)) {
+        // treat as page-level when position is missing and not a website result
+        e.element_identifier = e.element_identifier === 'website' ? 'website' : 'page';
+        e.ordinal_position = synthesizePageOrdinal;
+      }
+    }
+  }
+
+  // 3) Optionally wrap like the old container (results as a string)
+  if (wrapLikeOld) {
+    return {
+      title: out.eval_title || '',
+      url: out.eval_url || '',
+      results: JSON.stringify(out),
+    };
+  }
+
+  return out;
+}
+
 /**
  * ---- Crawler ----
  * Assumes you’ve bundled the exporter as: ./vendor/openA11yLegacyExport.bundle.iife.js
@@ -158,9 +193,13 @@ const crawler = new PuppeteerCrawler({
     const totalViolations = legacy.rule_results?.reduce((sum, r) => sum + (r.elements_violation || 0), 0) ?? 0;
 
     log.info(`Checked '${legacy.eval_title}' — rules: ${countRules}, violations: ${totalViolations}`);
-
-    // WRITE: push the full legacy-shaped object as a dataset item
+    legacy = normalizeForLegacyBackend(legacy, {
+      wrapLikeOld: true,              // set true only if your backend insists on the old wrapper
+      forcePlainEvalUrlEncoded: false, // set true if diffs show a mismatch here
+    });
     await Dataset.pushData(legacy);
+    // WRITE: push the full legacy-shaped object as a dataset item
+    // await Dataset.pushData(legacy);
 
     // Optionally, also store the raw string (uncomment if you need both)
     // await Actor.setValue(`legacy-${Date.now()}.json`, resultsString, { contentType: 'application/json; charset=utf-8' });
