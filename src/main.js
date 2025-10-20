@@ -119,8 +119,14 @@ function normalizeForLegacyBackend(obj, {
  */
 const crawler = new PuppeteerCrawler({
   maxRequestsPerCrawl: input.maxRequestsPerCrawl ?? 300,
-
+  preNavigationHooks: [async ({page}) => {
+     await page.emulateMediaFeatures([
+      { name: 'prefers-reduced-motion', value: 'reduce' },
+    ]);
+  }],
+  
   async requestHandler({ request, page, enqueueLinks, log }) {
+
     // Keep some quick console mirroring for debugging
     page.on('console', async (msg) => {
       try {
