@@ -146,6 +146,8 @@ const crawler = new PuppeteerCrawler({
 
     // Evaluate in page: run exporter, stringify safely, return the string
     const resultsString = await page.evaluate(async () => {
+      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      
       const safeStringify = (obj) => {
         const seen = new WeakSet();
         return JSON.stringify(
@@ -161,7 +163,7 @@ const crawler = new PuppeteerCrawler({
           2
         );
       };
-
+      await wait(2000);
       // Use the object signature for run()
       const payload = await window.OpenA11yLegacyExport.run({
         ruleset: 'WCAG21',
