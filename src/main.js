@@ -161,7 +161,8 @@ const crawler = new PuppeteerCrawler({
         '.cog-form',
         '#livesdk__campaign',
         '#buorg',
-        '#current-wave-ai-chat-widget-container'
+        '#current-wave-ai-chat-widget-container',
+        '.hbspt-form'
       ];
 
       const removeMatches = () => {
