@@ -154,22 +154,22 @@ const crawler = new PuppeteerCrawler({
 
     // Evaluate in page: run exporter, stringify safely, return the string
     const resultsString = await page.evaluate(async () => {
-      // const selectors = ['.userway_p5', '#salemove', '.chimney_calc','.cog-form','#livesdk__campaign'];
+      const selectors = ['.userway_p5', '#salemove', '.chimney_calc','.cog-form','#livesdk__campaign'];
 
-      // const removeMatches = () => {
-      //   for (const sel of selectors) {
-      //     document.querySelectorAll(sel).forEach((el) => el.remove());
-      //   }
-      // };
+      const removeMatches = () => {
+        for (const sel of selectors) {
+          document.querySelectorAll(sel).forEach((el) => el.remove());
+        }
+      };
 
-      // // Remove now
-      // removeMatches();
-      // // Remove anything re-injected later
-      // const observer = new MutationObserver(removeMatches);
-      // observer.observe(document.documentElement, { childList: true, subtree: true });
+      // Remove now
+      removeMatches();
+      // Remove anything re-injected later
+      const observer = new MutationObserver(removeMatches);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
 
-      // // Keep a handle so you can disconnect later if needed
-      // window.__thirdPartyStripObserver = observer;
+      // Keep a handle so you can disconnect later if needed
+      window.__thirdPartyStripObserver = observer;
 
       const safeStringify = (obj) => {
         const seen = new WeakSet();
