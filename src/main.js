@@ -140,6 +140,14 @@ const crawler = new PuppeteerCrawler({
     // Ensure the document is settled
     await page.waitForLoadState?.('load').catch(() => {});
     const title = await page.title().catch(() => '');
+    // inject script to hide common 3PI issues
+    // @todo : make this togglable via api 
+    await page.addStyleTag({content:`
+      .userway_p5, #salemove, .chimney_calc {
+        display: none;
+      }
+      `,
+    });
 
     // Inject the legacy exporter (IIFE bundle)
     await page.addScriptTag({ path: './vendor/openA11yLegacyExport.bundle.iife.js' });
