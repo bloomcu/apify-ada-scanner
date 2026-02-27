@@ -164,7 +164,13 @@ const crawler = new PuppeteerCrawler({
 
       // Remove now
       removeMatches();
-      
+      // Remove anything re-injected later
+      const observer = new MutationObserver(removeMatches);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      // Keep a handle so you can disconnect later if needed
+      window.__thirdPartyStripObserver = observer;
+
       const safeStringify = (obj) => {
         const seen = new WeakSet();
         return JSON.stringify(
