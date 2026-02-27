@@ -141,13 +141,7 @@ const crawler = new PuppeteerCrawler({
     await page.waitForLoadState?.('load').catch(() => {});
     const title = await page.title().catch(() => '');
     // inject script to hide common 3PI issues
-    // @todo : make this togglable via api 
-    await page.addStyleTag({content:`
-      .userway_p5, #salemove, .chimney_calc {
-        display: none;
-      }
-      `,
-    });
+    
 
     // Inject the legacy exporter (IIFE bundle)
     await page.addScriptTag({ path: './vendor/openA11yLegacyExport.bundle.iife.js' });
@@ -160,6 +154,17 @@ const crawler = new PuppeteerCrawler({
 
     // Evaluate in page: run exporter, stringify safely, return the string
     const resultsString = await page.evaluate(async () => {
+      const selectors = ['.userway_p5', '#salemove', '.chimney_calc'];
+
+      const removeMatches = () => {
+        for (const sel of selectors) {
+          document.querySelectorAll(sel).forEach((el) => el.remove());
+        }
+      };
+
+      // Remove now
+      removeMatches();
+      
       const safeStringify = (obj) => {
         const seen = new WeakSet();
         return JSON.stringify(
