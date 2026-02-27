@@ -154,7 +154,7 @@ const crawler = new PuppeteerCrawler({
 
     // Evaluate in page: run exporter, stringify safely, return the string
     const resultsString = await page.evaluate(async () => {
-      const selectors = ['.userway_p5', '#salemove', '.chimney_calc','.cog-form','#livesdk__campaign'];
+      const selectors = ['.userway_p5', '#salemove', '.chimney_calc','.cog-form','#livesdk__campaign','#buorg'];
 
       const removeMatches = () => {
         for (const sel of selectors) {
