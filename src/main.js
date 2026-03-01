@@ -6,6 +6,7 @@ await Actor.init();
 
 const input = await Actor.getInput() || {};
 const shouldEnqueueLinks = input.shouldEnqueueLinks ?? true; // default true
+const ignoreKnown3pi = input.ignoreKnown3pi ?? false
 
 /**
  * ---- Normalizers: new → old shape ----
@@ -153,8 +154,10 @@ const crawler = new PuppeteerCrawler({
     );
 
     // Evaluate in page: run exporter, stringify safely, return the string
-    const resultsString = await page.evaluate(async () => {
-      const selectors_to_remove = [
+   
+    const resultsString = await page.evaluate(async (ignoreKnown3pi) => {
+      if (ignoreKnown3pi){
+        const selectors_to_remove = [
         '.userway_p5',
         '#salemove',
         '.chimney_calc',
@@ -179,6 +182,9 @@ const crawler = new PuppeteerCrawler({
 
       // Keep a handle so you can disconnect later if needed
       window.__thirdPartyStripObserver = observer;
+      
+    }
+      
 
       const safeStringify = (obj) => {
         const seen = new WeakSet();
@@ -202,9 +208,12 @@ const crawler = new PuppeteerCrawler({
         level: 'AA',
         scope: 'ALL',
       });
+      
+      window.__thirdPartyStripObserver?.disconnect();
+      delete window.__thirdPartyStripObserver;
 
       return safeStringify(payload);
-    });
+    }, ignoreKnown3pi);
 
     // Back in Node: parse and normalize to old shape
     let legacy = {};

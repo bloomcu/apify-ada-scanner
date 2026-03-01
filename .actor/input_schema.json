@@ -22,6 +22,12 @@
             "type": "boolean",
             "description": "If true, the crawler will enqueue additional links discovered on the page. If false, it will scan only the provided start URLs.",
             "default": true
+        },
+        "ignoreKnown3pi": {
+            "title": "Ignore Known 3rd-party integrations",
+            "type":"boolean",
+            "description":"remove known 3PI elements from the DOM before scanning",
+            "default": false
         }
     }
 }
