@@ -158,6 +158,7 @@ const crawler = new PuppeteerCrawler({
     const resultsString = await page.evaluate(async (ignoreKnown3pi) => {
       if (ignoreKnown3pi){
         const selectors_to_remove = [
+        '.dt_kit_wrap',  
         '.userway_p5',
         '#salemove',
         '.chimney_calc',
