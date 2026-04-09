@@ -158,15 +158,25 @@ const crawler = new PuppeteerCrawler({
     const resultsString = await page.evaluate(async (ignoreKnown3pi) => {
       if (ignoreKnown3pi){
         const selectors_to_remove = [
-        '.dt_kit_wrap',  
-        '.userway_p5',
-        '#salemove',
+        '.dt_kit_wrap',
+        '.uwy', //userway
+        '.userway_p5', //userway
+        '.uw-sl',
+        '#salemove', //Glia widget
         '.chimney_calc',
-        '.cog-form',
+        '.chimney_calc_widget',
+        '.KJEBody', //Dinkytown calculator
+        '.cog-form',//cognito form
         '#livesdk__campaign',
-        '#buorg',
+        '#buorg', // Browser update
         '#current-wave-ai-chat-widget-container',
-        '.hbspt-form'
+        '.hbspt-form', //hubs
+        '.calconic-calculator',
+        '.fsform-container', // formstack
+        '#events-widget-loader',
+        '.tdWebchat', // Talkdesk web chat,
+        '.acsb-trigger'
+
       ];
 
       const removeMatches = () => {
@@ -249,7 +259,11 @@ const crawler = new PuppeteerCrawler({
     // await Actor.setValue(`legacy-${Date.now()}.json`, resultsString, { contentType: 'application/json; charset=utf-8' });
 
     if (shouldEnqueueLinks) {
-      await enqueueLinks();
+      await enqueueLinks({
+        exclude: [
+          /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|jpg|jpeg|png|gif|svg|mp4|mp3)([?#].*)?$/i,
+        ],
+      });
     } else {
       log.info(`Skipping link enqueuing for '${legacy.eval_title}'`);
     }
