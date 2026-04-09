@@ -176,7 +176,8 @@ const crawler = new PuppeteerCrawler({
         '#events-widget-loader',
         '.tdWebchat', // Talkdesk web chat,
         '.acsb-trigger',
-        'access-widget-ui' //accessibe tag
+        'access-widget-ui', //accessibe tag
+        '.acsb-sr-only' //accessibe screen-reader elements
 
       ];
 
