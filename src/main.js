@@ -175,7 +175,8 @@ const crawler = new PuppeteerCrawler({
         '.fsform-container', // formstack
         '#events-widget-loader',
         '.tdWebchat', // Talkdesk web chat,
-        '.acsb-trigger'
+        '.acsb-trigger',
+        'access-widget-ui' //accessibe tag
 
       ];
 
