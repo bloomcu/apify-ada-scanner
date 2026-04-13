@@ -180,7 +180,9 @@ const crawler = new PuppeteerCrawler({
         '.acsb-sr-only',
         '.fw-block', //accessibe screen-reader elements
         '#eltropy-liveHelpButton',
-        "#ae_launcher"
+        "#ae_launcher",
+        '#ae_app',
+        "#CybotCookiebotDialog"
       ];
 
       const removeMatches = () => {
