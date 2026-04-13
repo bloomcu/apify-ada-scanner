@@ -182,7 +182,8 @@ const crawler = new PuppeteerCrawler({
         '#eltropy-liveHelpButton',
         "#ae_launcher",
         '#ae_app',
-        "#CybotCookiebotDialog"
+        "#CybotCookiebotDialog",
+        "#ae_enabled_site"
       ];
 
       const removeMatches = () => {
