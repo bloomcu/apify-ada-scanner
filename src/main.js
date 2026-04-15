@@ -166,6 +166,7 @@ const crawler = new PuppeteerCrawler({
         '.chimney_calc',
         '.chimney_calc_widget',
         '.KJEBody', //Dinkytown calculator
+        'KJEWrapper',
         '.cog-form',//cognito form
         '#livesdk__campaign',
         '#buorg', // Browser update
@@ -180,6 +181,7 @@ const crawler = new PuppeteerCrawler({
         '.acsb-sr-only',
         '.fw-block', //accessibe screen-reader elements
         '#eltropy-liveHelpButton',
+        '#eltropy-notification-container',
         "#ae_launcher",
         '#ae_app',
         "#CybotCookiebotDialog",
