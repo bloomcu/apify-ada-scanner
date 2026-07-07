@@ -158,6 +158,7 @@ const crawler = new PuppeteerCrawler({
     const resultsString = await page.evaluate(async (ignoreKnown3pi) => {
       if (ignoreKnown3pi){
         const selectors_to_remove = [
+        '.weglot-dropdown',
         '.dt_kit_wrap',
         '.uwy', //userway
         '.userway_p5', //userway
@@ -165,6 +166,7 @@ const crawler = new PuppeteerCrawler({
         '#salemove', //Glia widget
         '.chimney_calc',
         '.chimney_calc_widget',
+        '.apexcharts-canvas',
         '.KJEBody', //Dinkytown calculator
         'KJEWrapper',
         '.cog-form',//cognito form
