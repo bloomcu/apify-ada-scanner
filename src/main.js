@@ -159,6 +159,7 @@ const crawler = new PuppeteerCrawler({
       if (ignoreKnown3pi){
         const selectors_to_remove = [
         '.third-party-exclude',
+        '.gtranslate_wrapper',
         '.weglot-dropdown',
         '.dt_kit_wrap',
         '.uwy', //userway
