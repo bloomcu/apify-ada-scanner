@@ -160,6 +160,7 @@ const crawler = new PuppeteerCrawler({
         const selectors_to_remove = [
         '.third-party-exclude',
         '.gtranslate_wrapper',
+        '.audioeye-skip-link',
         '.weglot-dropdown',
         '.dt_kit_wrap',
         '.uwy', //userway
