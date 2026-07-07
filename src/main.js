@@ -158,7 +158,7 @@ const crawler = new PuppeteerCrawler({
     const resultsString = await page.evaluate(async (ignoreKnown3pi) => {
       if (ignoreKnown3pi){
         const selectors_to_remove = [
-        '.3pi-exclude',
+        '.third-party-exclude',
         '.weglot-dropdown',
         '.dt_kit_wrap',
         '.uwy', //userway
