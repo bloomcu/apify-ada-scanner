@@ -40523,7 +40523,8 @@
           result_value_nls: abbrev,
           element_identifier,
           ordinal_position: pos,
-          message: r.result_message || r.message || '',
+          // aiRuleResult() puts the library's result message in `action`; the other names never existed.
+          message: r.action || r.result_message || r.message || '',
           class: cls,
           id: id,
         });
