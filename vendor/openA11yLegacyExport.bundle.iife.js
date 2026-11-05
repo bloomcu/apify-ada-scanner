@@ -40471,6 +40471,107 @@
   }
   function legacyGroupCode(/* rule */) { return 3; } // tweak if your old export needs specific group codes
 
+  /* ---------------- element context (flagged elements only) ---------------- */
+  // Structure only: no vendor knowledge here. The consumer's rule map decides what a class
+  // or a script host means, so there is one vendor list, not two.
+  const IDENTIFIER_MAX = 100;   // identifier text; the consumer compares on this prefix
+  const ANCESTORS_MAX  = 8;     // measured: vendor containers sit within 8 levels (median 1)
+  const ANCESTOR_CLASSES_MAX = 6;
+  const SNIPPET_MAX    = 200;
+  const LANDMARK_TAGS  = ['main', 'header', 'footer', 'nav', 'aside'];
+  const LANDMARK_ROLES = ['main', 'banner', 'contentinfo', 'navigation', 'complementary', 'region', 'search', 'form'];
+
+  // Counted in code points, not UTF-16 units, so the consumer can cut old identifiers at the
+  // same place (an emoji is one character to PHP's mb_substr, two to String.slice).
+  function shortText(text) {
+    return Array.from(String(text || '').replace(/\s+/g, ' ').trim()).slice(0, IDENTIFIER_MAX).join('');
+  }
+
+  function classList(node, max) {
+    return String(node.getAttribute?.('class') || '').split(/\s+/).filter(Boolean).slice(0, max);
+  }
+
+  function ancestorsOf(node) {
+    const ancestors = [];
+    for (let n = node.parentElement; n && n.tagName !== 'BODY' && n.tagName !== 'HTML' && ancestors.length < ANCESTORS_MAX; n = n.parentElement) {
+      ancestors.push({ tag: n.tagName.toLowerCase(), id: n.id || '', classes: classList(n, ANCESTOR_CLASSES_MAX) });
+    }
+    return ancestors;
+  }
+
+  function landmarkOf(node) {
+    for (let n = node.parentElement; n && n.tagName !== 'BODY'; n = n.parentElement) {
+      const role = (n.getAttribute('role') || '').toLowerCase();
+      if (LANDMARK_ROLES.includes(role)) return role;
+      const tag = n.tagName.toLowerCase();
+      if (LANDMARK_TAGS.includes(tag)) return tag;
+    }
+    return null;
+  }
+
+  function isUnique(selector) {
+    try { return document.querySelectorAll(selector).length === 1; } catch { return false; }
+  }
+
+  // Shortest-first: a unique id, else a tag:nth-of-type path up to the nearest unique-id ancestor.
+  function selectorOf(node) {
+    if (node.id && isUnique(`#${CSS.escape(node.id)}`)) return `#${CSS.escape(node.id)}`;
+    const parts = [];
+    for (let n = node; n && n.nodeType === 1 && n.tagName !== 'HTML'; n = n.parentElement) {
+      if (n !== node && n.id && isUnique(`#${CSS.escape(n.id)}`)) {
+        parts.unshift(`#${CSS.escape(n.id)}`);
+        break;
+      }
+      const tag = n.tagName.toLowerCase();
+      const sameTag = n.parentElement ? Array.from(n.parentElement.children).filter((c) => c.tagName === n.tagName) : [n];
+      parts.unshift(sameTag.length > 1 ? `${tag}:nth-of-type(${sameTag.indexOf(n) + 1})` : tag);
+    }
+    const selector = parts.join(' > ');
+    return isUnique(selector) ? selector : null;
+  }
+
+  // The opening tag, built from a childless clone so `>` inside attribute values can't cut it short.
+  function snippetOf(node) {
+    const shallow = node.cloneNode(false).outerHTML || '';
+    const close = `</${node.tagName.toLowerCase()}>`;
+    const open = shallow.endsWith(close) ? shallow.slice(0, -close.length) : shallow;
+    return open.slice(0, SNIPPET_MAX);
+  }
+
+  function elementContext(node) {
+    const context = {};
+    for (const [key, read] of [['selector', selectorOf], ['snippet', snippetOf], ['landmark', landmarkOf], ['ancestors', ancestorsOf]]) {
+      try { context[key] = read(node); } catch { context[key] = null; }
+    }
+    return context;
+  }
+
+  // What a contrast result was measured on (COLOR_1/COLOR_3): enough to explain or dispute it.
+  function contrastOf(cc) {
+    return {
+      ratio:            cc.ccr,
+      color:            cc.color_hex,
+      background:       cc.background_color_hex,
+      background_image: cc.background_image && cc.background_image !== 'none' ? cc.background_image : null,
+      opacity:          cc.opacity,
+      font_size:        cc.font_size,
+      font_weight:      cc.font_weight,
+      large_font:       cc.is_large_font,
+      positioned:       cc.is_positioned,
+    };
+  }
+
+  // Hosts of every script the page loaded, including ones injected after load.
+  function scriptHosts() {
+    const urls = Array.from(document.scripts, (s) => s.src).filter(Boolean)
+      .concat(performance.getEntriesByType('resource').filter((e) => e.initiatorType === 'script').map((e) => e.name));
+    const hosts = new Set();
+    for (const url of urls) {
+      try { hosts.add(new URL(url, document.baseURI).host); } catch { /* ignore */ }
+    }
+    return Array.from(hosts).sort();
+  }
+
   /* ---------------- core build ---------------- */
   async function buildLegacyJSON(er) {
     const doc = document;
@@ -40494,18 +40595,19 @@
       // Normalize element results & resolve DOM nodes for id/class/identifier
       const element_results = [];
       for (const r of raw) {
-        let id = '', cls = '', element_identifier = 'element';
+        let id = '', cls = '', element_identifier = 'element', node = null;
         const pos = Number.isFinite(r.position) ? r.position : null;
+        const abbrev = r.result_abbrev || r.result_value_nls || 'N/A';
 
         try {
           if (pos != null && typeof er.getDomElementByPosition === 'function') {
             const de = er.getDomElementByPosition(pos);
-            const node = de?.node;
+            node = de?.node || null;
             if (node) {
               id  = node.getAttribute?.('id') || '';
               cls = node.getAttribute?.('class') || '';
               const tag = (node.tagName || 'element').toLowerCase();
-              const name = (node.getAttribute?.('aria-label') || node.textContent || '').trim();
+              const name = shortText(node.getAttribute?.('aria-label') || node.textContent || '');
               element_identifier = name ? `${tag}: ${name}` : tag;
             }
           } else if (r.isWebsite) {
@@ -40517,15 +40619,20 @@
           /* ignore */
         }
 
-        const abbrev = r.result_abbrev || r.result_value_nls || 'N/A';
         element_results.push({
           result_value: String(mapResultValueToInt(abbrev)),
           result_value_nls: abbrev,
           element_identifier,
           ordinal_position: pos,
-          message: r.result_message || r.message || '',
+          // aiRuleResult() puts the library's result message in `action`; the other names never existed.
+          // Violations and warnings only: on every result it added 3 MB to a calculator page and
+          // pushed it past the 9 MiB dataset item limit.
+          message: (abbrev === 'V' || abbrev === 'W') ? (r.action || r.result_message || r.message || '') : '',
           class: cls,
           id: id,
+          // Context for violations and warnings only: passes are most of the payload.
+          ...((abbrev === 'V' || abbrev === 'W') && node ? elementContext(node) : {}),
+          ...((abbrev === 'V' || abbrev === 'W') && r.color_contrast ? { color_contrast: contrastOf(r.color_contrast) } : {}),
         });
       }
 
@@ -40599,6 +40706,7 @@
       ruleset_label: er.getRulesetLabel?.() || '',
       time: new Date().toLocaleTimeString(),
       markup_information,
+      script_hosts: scriptHosts(),
       rule_results: legacyRules,
     };
   }
