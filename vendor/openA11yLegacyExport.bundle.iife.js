@@ -40546,6 +40546,21 @@
     return context;
   }
 
+  // What a contrast result was measured on (COLOR_1/COLOR_3): enough to explain or dispute it.
+  function contrastOf(cc) {
+    return {
+      ratio:            cc.ccr,
+      color:            cc.color_hex,
+      background:       cc.background_color_hex,
+      background_image: cc.background_image && cc.background_image !== 'none' ? cc.background_image : null,
+      opacity:          cc.opacity,
+      font_size:        cc.font_size,
+      font_weight:      cc.font_weight,
+      large_font:       cc.is_large_font,
+      positioned:       cc.is_positioned,
+    };
+  }
+
   // Hosts of every script the page loaded, including ones injected after load.
   function scriptHosts() {
     const urls = Array.from(document.scripts, (s) => s.src).filter(Boolean)
@@ -40615,6 +40630,7 @@
           id: id,
           // Context for violations and warnings only: passes are most of the payload.
           ...((abbrev === 'V' || abbrev === 'W') && node ? elementContext(node) : {}),
+          ...((abbrev === 'V' || abbrev === 'W') && r.color_contrast ? { color_contrast: contrastOf(r.color_contrast) } : {}),
         });
       }
 
