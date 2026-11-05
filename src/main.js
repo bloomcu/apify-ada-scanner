@@ -126,7 +126,7 @@ const crawler = new PuppeteerCrawler({
     ]);
   }],
   
-  async requestHandler({ request, page, enqueueLinks, log }) {
+  async requestHandler({ request, response, page, enqueueLinks, log }) {
 
     // Keep some quick console mirroring for debugging
     page.on('console', async (msg) => {
@@ -252,6 +252,8 @@ const crawler = new PuppeteerCrawler({
     // Force in our current URL/title in case page altered them
     legacy.eval_url = request.loadedUrl || legacy.eval_url || request.url;
     legacy.eval_title = title || legacy.eval_title || '';
+    // A 404 page is still scanned; the status lets consumers tell it from a real page.
+    legacy.http_status = response?.status?.() ?? null;
 
     // Normalize to the exact old top-level structure your consumers expect
     legacy = normalizeContainerToOldShape(legacy, { DROP_NEW_KEYS: true });
