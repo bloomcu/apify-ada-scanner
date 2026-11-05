@@ -40625,7 +40625,9 @@
           element_identifier,
           ordinal_position: pos,
           // aiRuleResult() puts the library's result message in `action`; the other names never existed.
-          message: r.action || r.result_message || r.message || '',
+          // Violations and warnings only: on every result it added 3 MB to a calculator page and
+          // pushed it past the 9 MiB dataset item limit.
+          message: (abbrev === 'V' || abbrev === 'W') ? (r.action || r.result_message || r.message || '') : '',
           class: cls,
           id: id,
           // Context for violations and warnings only: passes are most of the payload.
