@@ -120,6 +120,9 @@ function normalizeForLegacyBackend(obj, {
  */
 const crawler = new PuppeteerCrawler({
   maxRequestsPerCrawl: input.maxRequestsPerCrawl ?? 300,
+  // Each page loads as a first visit: widgets that remember state across pages (Chimney's
+  // calculator accordion) otherwise open collapsed and their contents are scanned as hidden.
+  launchContext: { useIncognitoPages: true },
   preNavigationHooks: [async ({page}) => {
      await page.emulateMediaFeatures([
       { name: 'prefers-reduced-motion', value: 'reduce' },
